@@ -60,6 +60,10 @@ document continues
 ### Example
 
 ```C++
+
+
+    Templater *templater = new Templater( true );  //'true' is for enabling js debug on errors
+
     templater->setTmpDir( QDir().temp().absolutePath() + QDir::separator() + "templater_tmp_dir" );
     templater->setTemplateFile( "../example/template.odt" );
     templater->setOutputFile( QDir::current().absoluteFilePath("./result.odt") );
