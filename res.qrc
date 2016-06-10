@@ -1,0 +1,7 @@
+<RCC>
+    <qresource prefix="/">
+        <file>js/swig.js</file>
+        <file>js/img_replacer.js</file>
+        <file>js/init.js</file>
+    </qresource>
+</RCC>

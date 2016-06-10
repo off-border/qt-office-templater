@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title></title>
+    <script type="text/javascript" src="/swig.js"></script>
+    <script type="text/javascript" src="/img_replacer.js"></script>
+    <script type="text/javascript" src="/test.js"></script>
+</head>
+
+<body>
+    swig sanbox; <br>
+    <textarea name="" id="sample" cols="30" rows="10">
+        &lt;text:p text:style-name="P20"&gt;
+        &lt;text:span text:style-name="Основной_20_шрифт_20_абзаца"&gt;
+            &lt;text:span text:style-name="T10"&gt;{% img src %}&lt;/text:span&gt;
+        &lt;/text:span&gt;
+        &lt;/text:p&gt;
+        &lt;text:p text:style-name="P14"&gt;
+        &lt;text:span text:style-name="Основной_20_шрифт_20_абзаца"&gt;
+            &lt;text:span text:style-name="T3"&gt;
+                &lt;draw:frame draw:name="Рисунок 1" draw:style-name="fr1" draw:z-index="8" style:rel-height="scale" style:rel-width="scale" svg:height="7.479cm" svg:width="17.745cm" svg:y="0cm" text:anchor-type="as-char"&gt;
+                    &lt;draw:image xlink:actuate="onLoad" xlink:href="Pictures/1000000000000402000001B001A7E5FD.png" xlink:show="embed" xlink:type="simple"/&gt;
+                &lt;/draw:frame&gt;
+            &lt;/text:span&gt;
+        &lt;/text:span&gt;
+        &lt;text:span text:style-name="Основной_20_шрифт_20_абзаца"&gt;
+            &lt;text:span text:style-name="T12"&gt;{% endimg %}&lt;/text:span&gt;
+        &lt;/text:span&gt;
+        &lt;/text:p&gt;
+    </textarea>
+    <br>
+    
+    <code id="result"> result </code>
+</body>
+
+</html>
