@@ -1,5 +1,5 @@
-# office-templater
-## an ODT files templating engine for QT
+# qt-office-templater
+## An ODT files templating engine for QT
 
 The swig.js and quazip based office documents templating engine for QT(4-5). In current version it supports an ODT files only. But some DOCX basic support will come soon (without subtemplates inclusion, I think)
 
