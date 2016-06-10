@@ -1,16 +1,17 @@
 # office-templater
-## an ODT files templating engine 
+## an ODT files templating engine
 
-The swig.js and quazip based template engine for office documents. In current condition it supports and ODT files templating only.
+The swig.js and quazip based templating engine for office documents. In current version it supports an ODT files only. But some DOCX basic support will come soon (without subtemplates inclusion, I think)
+
 
 ### What works: 
 
-##### simple text variable insertion:
+##### Insertion of simple text variable:
 ```
 there will be a {{ variable }} inserted.
 ```
 
-##### conditions:
+#####Conditions:
 
 ```
  {% if variable %}
@@ -20,17 +21,43 @@ there will be a {{ variable }} inserted.
  {% endif %}
 ```
 
-##### subtemplates insertion
+##### Loops:
+
 ```
-  somwhere in document we can insert another document: 
+{% for item_1 in array_variable %}
+   so some output with the {{ item_1 }}
+{% endfor %}
+```
+
+##### Including of subtemplates
+
+```
+  Somwhere in document we can insert an another document: 
   {% include path_to_document_variable %}
   or
-  {% include 'path_to_document' %}
+  {% include '/path/to/document.odt' %} 
 ```
 but i haven't tested the simple .txt files including.
- 
+
+Note: The path to included document must be absolute. I used the browser version of Swig.js, so it doesn't support relative paths for including. Maybe I'll fix it later.
 
 
+### Insertion of images (replacement, actually)
+
+There are no ways to insert images in ODT XML file via Swig.js's basic functionality, because of format complexity and need of change some other files in the document's archive. So i've found the decision with replacement the real image file in the 'Pictures' folder in archive, and with changing image size in content.xml to keep the width of an original inserted image and with fitting the height which keeps the aspect ratio of the new image.
+
+You can do this replacement using tag {% img img_file_path_variable %} ... {% endimg %}:
+
+```
+some document text
+{% img path_to_new_image %}
+  [there are must be an inserted image which is to be replaced with the new one]
+{% endimg %}
+document continues
+```
+
+
+### Example
 
 ```C++
     templater->setTmpDir( QDir().temp().absolutePath() + QDir::separator() + "templater_tmp_dir" );
