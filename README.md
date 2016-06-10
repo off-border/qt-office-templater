@@ -44,7 +44,7 @@ Note: The path to included document must be absolute. I used the browser version
 
 ### Insertion of images (replacement, actually)
 
-There are no ways to insert images in ODT XML file via Swig.js's basic functionality, because of format complexity and need of change some other files in the document's archive. So i've found the decision with replacement the real image file in the 'Pictures' folder in archive, and with changing image size in content.xml to keep the width of an original inserted image and with fitting the height which keeps the aspect ratio of the new image.
+There are no ways to insert images in ODT XML file via Swig.js's basic functionality, because of format complexity and need of change some other files in the document's archive. So i've found the decision with replacement the real image file in the 'Pictures' folder in archive, and with changing the image size in content.xml to keep the width of an original inserted image and with fitting the height which keeps aspect ratio of the new image.
 
 You can do this replacement using tag {% img img_file_path_variable %} ... {% endimg %}:
 
