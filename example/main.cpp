@@ -8,7 +8,12 @@ int main(int argc, char** argv){
 
     Example *example = new Example();
 
-    //example->run();
+
+    example->testODT();
+    //example->testDOCX();
+
+
+    exit(0);
 
     return app.exec();
 

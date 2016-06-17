@@ -10,6 +10,7 @@ Example::Example(QObject *parent) :
 {
     templater = new Templater( true );
 
+
    /* because templater displays no error to console output. It uses signals to inform us about things */
     connect( templater, SIGNAL(sig_info(QString)),    this, SLOT(showInfo(QString)) );
     connect( templater, SIGNAL(sig_warning(QString)), this, SLOT(showWarning(QString)) );
@@ -17,9 +18,6 @@ Example::Example(QObject *parent) :
 
 
     templater->setTmpDir( QDir().temp().absolutePath() + QDir::separator() + "templater_tmp_dir" );
-    templater->setTemplateFile( "../example/template.odt" );
-    templater->setOutputFile( QDir::current().absoluteFilePath("./result.odt") );
-
 
 
     QString     simpleVariable = "This Is A Simple Variable";
@@ -33,19 +31,28 @@ Example::Example(QObject *parent) :
     templater->setVariable( "file_path", includeFile );
     templater->setVariable( "image_file_path","../example/test_image.jpg");
 
-    templater->parseTemplate();
 
-    QDesktopServices::openUrl(QUrl::fromLocalFile( QFileInfo("./result.odt").absoluteFilePath() ));
-
-    exit(0);
 }
 
 
 
-//void Example::run(){
-//    exit( 0 );
-//}
+void Example::testODT()
+{
+    templater->setTemplateFile( "../example/template.odt" );
+    templater->setOutputFile( QDir::current().absoluteFilePath("./result.odt") );
+    templater->parseTemplate();
+    QDesktopServices::openUrl(QUrl::fromLocalFile( QFileInfo("./result.odt").absoluteFilePath() ));
+}
 
+
+
+void Example::testDOCX()
+{
+    templater->setTemplateFile( "../example/template.docx" );
+    templater->setOutputFile( QDir::current().absoluteFilePath("./result.docx") );
+    templater->parseTemplate();
+    QDesktopServices::openUrl(QUrl::fromLocalFile( QFileInfo("./result.docx").absoluteFilePath() ));
+}
 
 
 void Example::showInfo(QString msg){

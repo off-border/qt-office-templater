@@ -12,6 +12,9 @@ public:
 
     //void run();
 
+    void testODT();
+    void testDOCX();
+
 public slots:
     void showInfo( QString );
     void showWarning( QString );

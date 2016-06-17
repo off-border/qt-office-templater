@@ -15,9 +15,8 @@ HEADERS += \
     example.h
 
 
-INCLUDEPATH += $$PWD/../../libs/quazip
-
-LIBS        += -L$$PWD/../../../bin/ -lquazip
+INCLUDEPATH +=   $$PWD/../../../../libs/quazip
+LIBS        += -L$$PWD/../../../../bin -lquazip
 
 include( ../templater.pri )
 

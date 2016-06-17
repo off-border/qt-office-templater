@@ -25,7 +25,7 @@ public:
 
     void setVariable(QString name, QStringList value);
 
-    void parseTemplate();
+    bool parseTemplate();
 
     Q_INVOKABLE QScriptValue requireJS( QString filename );
 
@@ -54,12 +54,14 @@ private:
     QString  updateRefs2(QString xml , QString prefix);
     void     finishMerging(QString result_path );
 
-    void     readTemplate();
+    bool     readTemplate();
     QString  cleanTemplate( QString tmpl );
     QString  updateRefs( QString tmpl );
-    QString fixInclusions( QString tmpl );
-    void    loadJSEngine();
-    void    writeResult();
+    QString  fixInclusions( QString tmpl );
+    void     loadJSEngine();
+    void     writeResult();
+
+    QString  getMediaPath( QString upackedPath, QString reference );
 
     QScriptEngine           engine;
     QScriptEngineDebugger   *debugger;
@@ -74,6 +76,9 @@ private:
     QMap<QString, QString>  prefixes;
 
     bool debug;
+
+    enum TemplateTypes { typeOdt, typeDocx, typeUnknown };
+    TemplateTypes templateType;
 
 };
 

@@ -4,6 +4,8 @@
 #include <QtGui/QPixmap>
 #include <QtXml>
 #include <QMainWindow>
+#include <QDirIterator>
+
 
 
 Templater::Templater(bool debug_mode, QObject *parent) :
@@ -26,6 +28,11 @@ Templater::Templater(bool debug_mode, QObject *parent) :
 
 void Templater::setTemplateFile(QString path) {
     templatePath = path;
+    templateType = typeUnknown;
+    if( templatePath.endsWith(".odt") )
+        templateType = typeOdt;
+    if( templatePath.endsWith(".docx") )
+        templateType = typeDocx;
 }
 
 void Templater::setOutputFile(QString path) {
@@ -45,32 +52,47 @@ QString Templater::getTemplate() {
 }
 
 
-void Templater::parseTemplate()
+bool Templater::parseTemplate()
 {
 
     cleanDirs();
 
     QDir().mkpath( tmp_path );
 
-    readTemplate();
+
+
+
+    if( !readTemplate() )
+        return false;
+
+    //qDebug() << "read template: " << templateText;
 
     engine.globalObject().setProperty( "tmpl", templateText );
 
     QScriptValue parms = engine.newObject();
-    parms.setProperty ( "locals", locals );
+    parms.setProperty( "locals", locals );
     engine.globalObject().setProperty("parms", parms);
 
     QScriptValue parsed = engine.evaluate("swig.render( tmpl, parms )" );
 
     resultText = parsed.toString();
 
+    //qDebug() << "parsed: " << resultText;
+
+
     resultText = fixInclusions( resultText );
 
-    writeTxtFile( tmp_path + "/content.xml", resultText );
+    if( templateType == typeOdt )
+        writeTxtFile( tmp_path + "/content.xml", resultText );
+    if( templateType == typeDocx )
+        writeTxtFile( tmp_path + "/word/document.xml", resultText );
+
 
     finishMerging( tmp_path );
 
     writeResult();
+
+    return true;
 }
 
 
@@ -111,40 +133,94 @@ void Templater::writeTxtFile(QString path, QString data)
 }
 
 
-void Templater::readTemplate()
+bool Templater::readTemplate()
 {
-    QString unzipped = unzipFile( templatePath, tmp_path );
-    prepareUnpacked( unzipped );
-    templateText = readTxtFile( unzipped + "/content.xml" );
+    if( !QFile(templatePath).exists() ){
+        emit sig_error("template file not found: " + templatePath );
+        return false;
+    }
+
+    QString unzipped;
+    if( templateType == typeOdt || templateType == typeDocx ){
+        unzipped = unzipFile( templatePath, tmp_path );
+        prepareUnpacked( unzipped );
+    }
+
+    if( templateType == typeOdt )
+        templateText = readTxtFile( unzipped + "/content.xml" );
+    if( templateType == typeDocx )
+        templateText = readTxtFile( unzipped + "/word/document.xml" );
+    if( templateType == typeUnknown )
+        templateText = readTxtFile( templatePath );
+
+    return true;
+}
+
+
+
+QString cleanTags( QString str, QString begin, QString end ){
+
+
+
+    QRegExp xmlTags("(<[^<]+>\\s*)+");
+    QRegExp preservedSpace("(<[^>]+)xml:space=\"preserve\"(/?>)\\s?");
+
+    QString tmp( str );
+
+    QStringList toClean;
+    int from = 0, to = 0;
+    while( true ){
+        from = tmp.indexOf(begin,to);
+        if( from < 0 )
+            break;
+        to   = tmp.indexOf(end, from) + end.length();
+        if( to < 0 )
+            break;
+        QString tag = tmp.mid(from, to-from);
+        if( xmlTags.indexIn(tag) != -1 )
+        toClean << tag;
+    }
+
+
+    foreach( QString tag, toClean ){
+
+        QString withSpaces(tag);
+        while( preservedSpace.indexIn(withSpaces) != -1 ){
+            withSpaces.replace( preservedSpace.cap(), preservedSpace.cap(1) + preservedSpace.cap(2) + "$SPACE" );
+        }
+        withSpaces.replace(xmlTags, "");
+        withSpaces.replace("$SPACE", " ");
+
+        qDebug() << "withSpaces: " << withSpaces;
+        tmp.replace( tag, withSpaces );
+    };
+    return tmp;
 }
 
 
 QString Templater::cleanTemplate(QString tmpl)
 {
-    QRegExp varOpen ("\\{<[^{]+>\\{");
-    QRegExp varClose("([^}^%])\\}[^}]+\\}");
-    QRegExp varExpr ("\\{\\{\\s*(<[^>]+>\\s*)*(\\w+\\s*)+(<[^>]+>)+(\\s*)");  //
+    QRegExp varOpen ("\\{(<[^<]+>\\s*)+\\{");
+    QRegExp varClose("\\}(<[^<]+>\\s*)+\\}");
 
-    tmpl = tmpl.replace( varOpen, "{{" );
-    tmpl = tmpl.replace( varClose, "\\1}}" );
-    while( varExpr.indexIn(tmpl) != -1 )
-        tmpl = tmpl.replace( varExpr, "{{\\2\\4");
+    tmpl.replace( varOpen, "{{" );
+    tmpl.replace( varClose, "}}" );
+    tmpl = cleanTags( tmpl, "{{", "}}");
 
-    QRegExp tagOpen("\\{<[^{]+>%");
-    QRegExp tagClose("([^}^{^\\d])%<[^}]+\\}");
-    QRegExp tagExpr ("\\{\\%\\s*(<[^>]+>\\s*)*(([^<^\\}])*)(<[^>]+>)+(\\s*)");      // \{\%\s*(<[^>]+>\s*)*(([^<^\}])*)(<[^>]+>)+(\s*)
+    QRegExp tagOpen("\\{<[^<]+>\\s*)+\\%");
+    QRegExp tagClose("\\%(<[^<]+>\\s*)+\\}");
 
-    tmpl = tmpl.replace( tagOpen, "{% " );
-    tmpl = tmpl.replace( tagClose, "\\1 %}" );
-    while( tagExpr.indexIn(tmpl) != -1 )
-        tmpl = tmpl.replace( tagExpr, "{%\\2\\5");
+    tmpl.replace( tagOpen, "{% " );
+    tmpl.replace( tagClose, "%}" );
+    tmpl = cleanTags( tmpl, "{%", "%}" );
 
-    tmpl = tmpl.replace("&apos;", "'");
+    tmpl.replace("&apos;", "'");
+    tmpl.replace("`","'");
 
    //fix double xml tags closing
-    tmpl = tmpl.replace( QRegExp("(</text:span>\\s*<text:span[^>]+>)([^<]+)(</text:span>)\\s*</text:span>"), "\\1\\2\\3" );
+    tmpl.replace( QRegExp("(</text:span>\\s*<text:span[^>]+>)([^<]+)(</text:span>)\\s*</text:span>"), "\\1\\2\\3" );
 
-    tmpl = tmpl.replace("{{", "@_{{");
+    tmpl.replace("{{", "@_{{");
 
     return tmpl;
 }
@@ -247,31 +323,59 @@ void Templater::setVariable(QString name, QStringList value) {
 
 QScriptValue Templater::replace_image_file( QScriptValue old_file, QScriptValue new_file ) {
 
-    QString of( tmp_path+"/"+old_file.toString() );
-    QString nf( new_file.toString().replace("file:///", "") );
+    QString of, nf;
 
+    if( templateType == typeUnknown ){
+        emit sig_error("cannot replace image for unknown template type");
+        return "";
+    }
+
+    of = getMediaPath( tmp_path, old_file.toString() );
+
+    nf = new_file.toString().replace("file:///", "");
 
     if( !QFileInfo( of ).isFile() ){
-        emit sig_error( "cannot find file: " + of );
+        emit sig_error( "cannot find old image file: " + of );
         return "";
     }
     if( !QFileInfo( nf ).isFile() ){
-        emit sig_error( "cannot find file: " + nf );
+        emit sig_error( "cannot find new image file: " + nf );
         return "";
     }
 
     QFile( of ).remove();
     if( !QFile::copy( nf, of ) ){
-        emit sig_error( "cannot replace file " + of + " with file " + of);
+        emit sig_error( "cannot replace file " + of + " with file " + nf);
     }
 
+
+
     return "";
+}
+
+
+QString Templater::getMediaPath( QString upackedPath, QString reference){
+    if( templateType == typeOdt ){
+        return upackedPath + "/" + reference;
+    }
+
+    if( templateType == typeDocx ){
+        QDomDocument doc;
+        doc.setContent( readTxtFile( upackedPath + "/word/_rels/document.xml.rels" ) );
+        QDomNodeList rels = doc.elementsByTagName("Relationship");
+        for( int i = 0; i < rels.length(); i++ )
+            if( rels.at(i).toElement().attribute("Id") == reference )
+                return upackedPath + "/word/" + rels.at(i).toElement().attribute("Target");
+    }
+
+    return upackedPath + "/" + reference;
 }
 
 
 QScriptValue Templater::get_new_img_height(QScriptValue img_path, QScriptValue to_width ) {
 
     QString file = img_path.toString().replace("file:///","");
+
     if( !QFile(file).exists() ){
         emit sig_warning( "get_new_img_height: file " + file + " not found" );
         return 0;
@@ -284,7 +388,15 @@ QScriptValue Templater::get_new_img_height(QScriptValue img_path, QScriptValue t
         return 0;
     }
 
-    return static_cast<double>( img.size().height() ) / img.size().width() * to_width.toString().toDouble() ;
+    double height = static_cast<double>( img.size().height() ) / img.size().width() * to_width.toString().toDouble() ;
+
+    if( templateType == typeOdt )
+        return height;
+
+    if( templateType == typeDocx )
+        return (int)round( height );
+
+    return height;
 }
 
 
@@ -391,16 +503,26 @@ QString Templater::mergeOdtFile(QString filename) {
 
 void Templater::prepareUnpacked(QString path)
 {
-    QString text = readTxtFile( path + "/content.xml" );
-    text = cleanTemplate( text );
-    text = updateRefs2( text, prefixes.value(path) );
-    writeTxtFile( path + "/content.xml", text );
+    if( templateType == typeOdt )
+    {
+        QString text = readTxtFile( path + "/content.xml" );
+        text = cleanTemplate( text );
+        text = updateRefs2( text, prefixes.value(path) );
+        writeTxtFile( path + "/content.xml", text );
 
-    text = readTxtFile( path + "/styles.xml" );
-    text = updateRefs2( text, prefixes.value(path) );
-    writeTxtFile( path + "/styles.xml", text );
+        text = readTxtFile( path + "/styles.xml" );
+        text = updateRefs2( text, prefixes.value(path) );
+        writeTxtFile( path + "/styles.xml", text );
+    }
 
-    //qDebug() << " --- preparing: " << path << "\n--- prefix: " << prefixes.value(path);
+    if( templateType == typeDocx )
+    {
+        QString text = readTxtFile( path + "/word/document.xml" );
+        text = cleanTemplate( text );
+        //text = updateRefs2( text, prefixes.value(path) );
+        writeTxtFile( path + "/word/document.xml", text );
+
+    }
 }
 
 
@@ -428,40 +550,90 @@ void Templater::finishMerging(QString result_path)
 
         QDomDocument src, dst; QString file;
 
-        file = "/content.xml";
-        dst.setContent( readTxtFile(result_path + file) );
-        src.setContent( readTxtFile(source_path + file) );
-        mergeNodes( "office:font-face-decls", dst, src );
-        mergeNodes( "office:automatic-styles", dst, src );
-        writeTxtFile( result_path + file, dst.toString(4) );
+        if( templateType == typeOdt ) {
+            file = "/content.xml";
+            dst.setContent( readTxtFile(result_path + file) );
+            src.setContent( readTxtFile(source_path + file) );
+            mergeNodes( "office:font-face-decls", dst, src );
+            mergeNodes( "office:automatic-styles", dst, src );
+            writeTxtFile( result_path + file, dst.toString(4) );
 
-        file = "/styles.xml";
-        dst.setContent( readTxtFile(result_path + file) );
-        src.setContent( readTxtFile(source_path + file) );
-        mergeNodes( "office:font-face-decls", dst, src );
-        mergeNodes( "office:styles", dst, src, QStringList() << "style:default-style" );
-        mergeNodes( "office:automatic-styles", dst, src );
-        mergeNodes( "office:master-styles", dst, src );
-        writeTxtFile( result_path + file, dst.toString(4) );
+            file = "/styles.xml";
+            dst.setContent( readTxtFile(result_path + file) );
+            src.setContent( readTxtFile(source_path + file) );
+            mergeNodes( "office:font-face-decls", dst, src );
+            mergeNodes( "office:styles", dst, src, QStringList() << "style:default-style" );
+            mergeNodes( "office:automatic-styles", dst, src );
+            mergeNodes( "office:master-styles", dst, src );
+            writeTxtFile( result_path + file, dst.toString(4) );
 
-        file = "/META-INF/manifest.xml";
-        dst.setContent( readTxtFile(result_path + file) );
-        src.setContent( readTxtFile(source_path + file) );
-        QDomNode     manifest = dst.elementsByTagName("manifest:manifest").at(0);
-        QDomNodeList files    = src.elementsByTagName("manifest:file-entry");
-        for( int i = 0; i < files.length(); i++ ){
-            QString pic = files.at(i).toElement().attribute("manifest:full-path");
-            if( pic.indexOf("Pictures/") != -1 ){
-                manifest.appendChild( files.at(i) );
-                i--;
+            file = "/META-INF/manifest.xml";
+            dst.setContent( readTxtFile(result_path + file) );
+            src.setContent( readTxtFile(source_path + file) );
+            QDomNode     manifest = dst.elementsByTagName("manifest:manifest").at(0);
+            QDomNodeList files    = src.elementsByTagName("manifest:file-entry");
+            for( int i = 0; i < files.length(); i++ ){
+                QString pic = files.at(i).toElement().attribute("manifest:full-path");
+                if( pic.indexOf("Pictures/") != -1 ){
+                    manifest.appendChild( files.at(i) );
+                    i--;
+                }
             }
+            writeTxtFile( result_path + file, dst.toString(4) );
         }
-        writeTxtFile( result_path + file, dst.toString(4) );
+
+        if( templateType == typeDocx ) {
+            emit sig_warning("finishMerging: not implemented for .docx");
+        }
     }
 }
 
+
+
 void Templater::writeResult() {
-    JlCompress().compressDir( resultPath, tmp_path );
+    JlCompress().compressDir( resultPath, tmp_path, true );
+
+   /* append word/_rels/.rels to archive.
+    * JICompress dont want to work correctly with filters
+    * to add hidden files */
+    if( templateType == typeDocx ){
+
+        QuaZip zip( resultPath );
+        QuaZipFile outZipFile(&zip);
+
+        QFile inFile( tmp_path + "/_rels/.rels" );
+
+        if( !zip.open( QuaZip::mdAdd ) ){
+            emit sig_error( "cannot open file: " + resultPath );
+            return;
+        }
+
+        if( !inFile.open(QIODevice::ReadOnly) ){
+            emit sig_error( "cannot open file: " + tmp_path + "/_rels/.rels" );
+            return;
+        }
+
+        if( !outZipFile.open(QIODevice::WriteOnly, QuaZipNewInfo("_rels/.rels", tmp_path + "/_rels/.rels")) ){
+            emit sig_error("cannot open outZipFile to append .rels");
+            return;
+        }
+
+        QByteArray buffer;
+        buffer = inFile.read( 256 );
+        while( !buffer.isEmpty() ){
+            outZipFile.write( buffer );
+            buffer = inFile.read( 256 );
+        }
+
+        outZipFile.close();
+
+        zip.close();
+    }
+
+
+
+
+
 }
 
 
