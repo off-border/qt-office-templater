@@ -40,7 +40,7 @@ there will be a {{ variable }} inserted.
   Somwhere in document we can insert an another document: 
   {% include path_to_document_variable %}
   or
-  {% include '/path/to/document.odt' %} 
+  {% include `/path/to/document.odt` %} 
 ```
 but i haven't tested the simple .txt files including.
 
