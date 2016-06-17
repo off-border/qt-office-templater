@@ -1,8 +1,13 @@
 # qt-office-templater
 ## An ODT files templating engine for QT
 
-The swig.js and quazip based office documents templating engine for QT(4-5). In current version it supports an ODT files only. But some DOCX basic support will come soon (without subtemplates inclusion, I think)
+The **swig.js** and **quazip** based office documents templating engine for **QT**(4-5). In current version it supports an *ODT* files only. But some *DOCX* basic support will come soon (without subtemplates inclusion, I think)
 
+All you need to prepare template is just to create a document in KWriter (LibreOffice Writer, MS Word, etc) with all needed template tags and variables and save it as an ODT file.
+
+The code uses **quazip**. So you should link it with your QT project first. See *'example'* folder.
+
+**NOTE:** to avoid problems with editor's autoreplacement of ' and " characters you should use ` instead.
 
 ### What works: 
 
@@ -35,7 +40,7 @@ there will be a {{ variable }} inserted.
   Somwhere in document we can insert an another document: 
   {% include path_to_document_variable %}
   or
-  {% include '/path/to/document.odt' %} 
+  {% include `/path/to/document.odt` %} 
 ```
 but i haven't tested the simple .txt files including.
 
