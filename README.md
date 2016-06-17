@@ -7,6 +7,8 @@ All you need to prepare template is just to create a document in KWriter (LibreO
 
 The code uses **quazip**. So you should link it with your QT project first. See *'example'* folder.
 
+**NOTE:** to avoid problems with editor's autoreplacement of ' and " characters you should use ` instead.
+
 ### What works: 
 
 ##### Insertion of simple text variable:
