@@ -1,7 +1,7 @@
 # qt-office-templater
 ## An ODT files templating engine for QT
 
-The **swig.js** and **quazip** based office documents templating engine for **QT**(4-5). In current version it supports an *ODT* and *DOCX* files. *DOCX* templating does not support *{% include %}* tag yet.
+The **swig.js** and **quazip** based office documents templating engine for **QT**(4-5). In current version it supports an **ODT** and **DOCX** files. *DOCX* templating does not support *{% include %}* tag yet.
 
 All you need to prepare template is just to create a document in KWriter (LibreOffice Writer, MS Word, etc) with all needed template tags and variables and save it as an ODT file.
 
